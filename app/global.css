@@ -1,3 +1,11 @@
+/* global.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  body {
+    @apply bg-background text-white;
+  }
+}
