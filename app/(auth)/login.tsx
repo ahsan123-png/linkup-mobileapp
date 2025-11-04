@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  Animated,
+  Alert, Animated,
   Dimensions,
   ScrollView,
   Text,
@@ -43,28 +43,28 @@ export default function Login() {
     ]).start();
   }, []);
 
-//   const handleLogin = async () => {
-//     if (!username.trim() || !password.trim()) {
-//       Alert.alert('Error', 'Please fill in all fields');
-//       return;
-//     }
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
 
-//     setIsLoading(true);
+    setIsLoading(true);
     
-//     const success = await login(username, password);
+    const success = await login(username, password);
     
-//     if (success) {
-//       router.replace('/(tabs)/chat');
-//     } else {
-//       Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
-//     }
+    if (success) {
+      router.replace('/(auth)/login');
+    } else {
+      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+    }
     
-//     setIsLoading(false);
-//   };
+    setIsLoading(false);
+  };
 
-//   const navigateToRegister = () => {
-//     router.push('/(auth)/register');
-//   };
+  const navigateToRegister = () => {
+    router.push('/(auth)/register');
+  };
 
   return (
     <ScrollView 
@@ -107,7 +107,7 @@ export default function Login() {
           <View className="space-y-6">
             {/* Username Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-3">
                 Username or Email
               </Text>
               <View className="relative">
@@ -127,8 +127,8 @@ export default function Login() {
             </View>
 
             {/* Password Input */}
-            <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+            <View className="space-y-2 mt-4">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-3">
                 Password
               </Text>
               <View className="relative">
@@ -169,7 +169,7 @@ export default function Login() {
               className={`w-full py-4 rounded-2xl mt-4 ${
                 isLoading ? 'bg-primary/70' : 'bg-primary'
               }`}
-            //   onPress={handleLogin}
+              onPress={handleLogin}
               disabled={isLoading}
             >
               <Text className="text-white text-center font-semibold text-lg">
@@ -187,9 +187,9 @@ export default function Login() {
             {/* Register Link */}
             <View className="flex-row justify-center">
               <Text className="text-text-secondary">Don't have an account? </Text>
-              {/* <TouchableOpacity onPress={navigateToRegister}>
+              <TouchableOpacity onPress={navigateToRegister}>
                 <Text className="text-primary font-semibold">Sign Up</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
           </View>
         </Animated.View>

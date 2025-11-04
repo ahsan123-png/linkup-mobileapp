@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   ScrollView,
   Text,
@@ -49,40 +50,40 @@ export default function Register() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-//   const handleRegister = async () => {
-//     const { full_name, email, password, confirmPassword } = formData;
+  const handleRegister = async () => {
+    const { full_name, email, password, confirmPassword } = formData;
 
-//     if (!full_name.trim() || !email.trim() || !password || !confirmPassword) {
-//       Alert.alert('Error', 'Please fill in all fields');
-//       return;
-//     }
+    if (!full_name.trim() || !email.trim() || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
 
-//     if (password !== confirmPassword) {
-//       Alert.alert('Error', 'Passwords do not match');
-//       return;
-//     }
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
 
-//     if (password.length < 6) {
-//       Alert.alert('Error', 'Password must be at least 6 characters long');
-//       return;
-//     }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
 
-//     setIsLoading(true);
+    setIsLoading(true);
 
-//     const success = await register({ full_name, email, password });
+    const success = await register({ full_name, email, password });
     
-//     if (success) {
-//       router.replace('/(tabs)/chat');
-//     } else {
-//       Alert.alert('Registration Failed', 'Please try again with different credentials.');
-//     }
+    if (success) {
+      router.replace('/(auth)/login');
+    } else {
+      Alert.alert('Registration Failed', 'Please try again with different credentials.');
+    }
     
-//     setIsLoading(false);
-//   };
+    setIsLoading(false);
+  };
 
-//   const navigateToLogin = () => {
-//     router.back();
-//   };
+  const navigateToLogin = () => {
+    router.back();
+  };
 
   return (
     <ScrollView 
@@ -128,10 +129,10 @@ export default function Register() {
           </View>
 
           {/* Registration Form */}
-          <View className="space-y-5">
+          <View className="space-y-5 gap-5">
             {/* Full Name Input */}
-            <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+            <View className="space-y-2 ">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
                 Full Name
               </Text>
               <View className="relative">
@@ -151,7 +152,7 @@ export default function Register() {
 
             {/* Email Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
                 Email Address
               </Text>
               <View className="relative">
@@ -173,7 +174,7 @@ export default function Register() {
 
             {/* Password Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
                 Password
               </Text>
               <View className="relative">
@@ -204,7 +205,7 @@ export default function Register() {
 
             {/* Confirm Password Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
                 Confirm Password
               </Text>
               <View className="relative">
@@ -234,7 +235,7 @@ export default function Register() {
             </View>
 
             {/* Register Button */}
-            {/* <TouchableOpacity
+            <TouchableOpacity
               className={`w-full py-4 rounded-2xl mt-4 ${
                 isLoading ? 'bg-primary/70' : 'bg-primary'
               }`}
@@ -244,14 +245,14 @@ export default function Register() {
               <Text className="text-white text-center font-semibold text-lg">
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
 
             {/* Login Link */}
             <View className="flex-row justify-center mt-6">
               <Text className="text-text-secondary">Already have an account? </Text>
-              {/* <TouchableOpacity onPress={navigateToLogin}>
+              <TouchableOpacity onPress={navigateToLogin}>
                 <Text className="text-primary font-semibold">Sign In</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
