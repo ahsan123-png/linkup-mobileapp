@@ -15,38 +15,40 @@ export default function SplashScreen() {
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Start animations
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-    ]).start();
+  // Start animations
+  Animated.parallel([
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }),
+    Animated.timing(scaleAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }),
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 1000,
+      useNativeDriver: true,
+    }),
+  ]).start();
 
-    // Navigate after delay
-    const timer = setTimeout(() => {
-      if (!isLoading) {
-        if (user) {
-          router.replace('/(auth)/login');
-        } else {
-          router.replace('/(auth)/login');
-        }
+  // Navigate after delay
+  const timer = setTimeout(() => {
+    if (!isLoading) {
+      if (user) {
+        console.log('User is logged in, redirecting to main screen...');
+        router.replace('/(tabs)/chat');
+      } else {
+        console.log('No user found, redirecting to login...');
+        router.replace('/(auth)/login');
       }
-    }, 2500);
+    }
+  }, 2500);
 
-    return () => clearTimeout(timer);
-  }, [isLoading, user]);
+  return () => clearTimeout(timer);
+}, [isLoading, user]);
 
   return (
     <View className="flex-1 bg-background justify-center items-center">

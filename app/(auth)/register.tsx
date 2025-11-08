@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   ScrollView,
   Text,
@@ -23,6 +22,7 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [confirmSecureTextEntry, setConfirmSecureTextEntry] = useState(true);
+  const [error, setError] = useState('');
   
   const { register } = useAuth();
   const router = useRouter();
@@ -48,34 +48,38 @@ export default function Register() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setError(''); // Clear error when user types
   };
 
   const handleRegister = async () => {
     const { full_name, email, password, confirmPassword } = formData;
 
     if (!full_name.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setError('Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      setError('Password must be at least 6 characters long');
       return;
     }
 
     setIsLoading(true);
+    setError('');
 
     const success = await register({ full_name, email, password });
     
     if (success) {
-      router.replace('/(auth)/login');
+      // Success - automatically redirect to main screen
+      console.log('Registration successful, redirecting to main screen...');
+      router.replace('/(tabs)/chat');
     } else {
-      Alert.alert('Registration Failed', 'Please try again with different credentials.');
+      setError('Registration failed. Please try again with different credentials.');
     }
     
     setIsLoading(false);
@@ -108,12 +112,12 @@ export default function Register() {
         >
           {/* Header */}
           <View className="items-center mb-8">
-            {/* <TouchableOpacity 
+            <TouchableOpacity 
               className="self-start mb-6"
               onPress={navigateToLogin}
             >
               <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
-            </TouchableOpacity> */}
+            </TouchableOpacity>
             
             <View className="flex-row items-center mb-4">
               <View className="w-12 h-12 bg-primary rounded-2xl items-center justify-center mr-3">
@@ -128,11 +132,18 @@ export default function Register() {
             </Text>
           </View>
 
+          {/* Error Message */}
+          {error ? (
+            <View className="bg-red-500/20 border border-red-500 rounded-xl p-4 mb-6">
+              <Text className="text-red-400 text-center">{error}</Text>
+            </View>
+          ) : null}
+
           {/* Registration Form */}
-          <View className="space-y-5 gap-5">
+          <View className="space-y-5">
             {/* Full Name Input */}
-            <View className="space-y-2 ">
-              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
+            <View className="space-y-2">
+              <Text className="text-text-secondary text-sm font-medium ml-1">
                 Full Name
               </Text>
               <View className="relative">
@@ -152,7 +163,7 @@ export default function Register() {
 
             {/* Email Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
+              <Text className="text-text-secondary text-sm font-medium ml-1">
                 Email Address
               </Text>
               <View className="relative">
@@ -174,7 +185,7 @@ export default function Register() {
 
             {/* Password Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
+              <Text className="text-text-secondary text-sm font-medium ml-1">
                 Password
               </Text>
               <View className="relative">
@@ -205,7 +216,7 @@ export default function Register() {
 
             {/* Confirm Password Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1 mb-2">
+              <Text className="text-text-secondary text-sm font-medium ml-1">
                 Confirm Password
               </Text>
               <View className="relative">
