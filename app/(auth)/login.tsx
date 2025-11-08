@@ -16,15 +16,17 @@ import { useAuth } from '../components/auth/AuthContext';
 const { width } = Dimensions.get('window');
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const [error, setError] = useState('');
   
   const { login } = useAuth();
   const router = useRouter();
 
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -43,20 +45,28 @@ export default function Login() {
     ]).start();
   }, []);
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError(''); // Clear error when user types
+  };
+
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!formData.username.trim() || !formData.password.trim()) {
+      setError('Please fill in all fields');
       return;
     }
 
     setIsLoading(true);
+    setError('');
     
-    const success = await login(username, password);
+    const success = await login(formData.username, formData.password);
     
     if (success) {
-      router.replace('/(auth)/login');
+      Alert.alert('Success', 'Login successful!', [
+        { text: 'OK', onPress: () => router.replace('/(tabs)/chat') }
+      ]);
     } else {
-      Alert.alert('Login Failed', 'Invalid credentials. Please try again.');
+      setError('Invalid credentials. Please try again.');
     }
     
     setIsLoading(false);
@@ -93,15 +103,21 @@ export default function Login() {
               <View className="w-12 h-12 bg-primary rounded-2xl items-center justify-center mr-3">
                 <Text className="text-2xl font-bold text-white">L</Text>
               </View>
-             <Text className="text-4xl font-bold text-white">
-                Link
-                <Text className="text-primary">Up</Text>
+              <Text className="text-4xl font-bold text-white">
+                Link<Text className="text-primary">Up</Text>
               </Text>
             </View>
             <Text className="text-text-secondary text-lg text-center">
               Welcome back! Sign in to continue
             </Text>
           </View>
+
+          {/* Error Message */}
+          {error ? (
+            <View className="bg-red-500/20 border border-red-500 rounded-xl p-4 mb-6">
+              <Text className="text-red-400 text-center">{error}</Text>
+            </View>
+          ) : null}
 
           {/* Login Form */}
           <View className="space-y-6">
@@ -118,8 +134,8 @@ export default function Login() {
                   className="w-full bg-surface border border-border text-white pl-12 pr-4 py-4 rounded-2xl text-base"
                   placeholder="Enter your username or email"
                   placeholderTextColor={COLORS.text.secondary}
-                  value={username}
-                  onChangeText={setUsername}
+                  value={formData.username}
+                  onChangeText={(value) => handleInputChange('username', value)}
                   editable={!isLoading}
                   autoCapitalize="none"
                 />
@@ -140,8 +156,8 @@ export default function Login() {
                   placeholder="Enter your password"
                   placeholderTextColor={COLORS.text.secondary}
                   secureTextEntry={secureTextEntry}
-                  value={password}
-                  onChangeText={setPassword}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
                   editable={!isLoading}
                 />
                 <TouchableOpacity 
@@ -156,13 +172,6 @@ export default function Login() {
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity className="self-end">
-              <Text className="text-primary text-sm font-medium">
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
 
             {/* Login Button */}
             <TouchableOpacity
