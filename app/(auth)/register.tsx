@@ -143,8 +143,8 @@ export default function Register() {
           <View className="space-y-5">
             {/* Full Name Input */}
             <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
-                Full Name
+              <Text className="text-text-secondary text-sm font-medium ml-1 mb-3">
+          
               </Text>
               <View className="relative">
                 <View className="absolute left-4 top-4 z-10">
@@ -162,10 +162,8 @@ export default function Register() {
             </View>
 
             {/* Email Input */}
-            <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
-                Email Address
-              </Text>
+            <View className="space-y-2 mt-5">
+             
               <View className="relative">
                 <View className="absolute left-4 top-4 z-10">
                   <Ionicons name="mail-outline" size={20} color={COLORS.text.secondary} />
@@ -184,10 +182,7 @@ export default function Register() {
             </View>
 
             {/* Password Input */}
-            <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
-                Password
-              </Text>
+            <View className="space-y-2 mt-5">
               <View className="relative">
                 <View className="absolute left-4 top-4 z-10">
                   <Ionicons name="lock-closed-outline" size={20} color={COLORS.text.secondary} />
@@ -215,10 +210,7 @@ export default function Register() {
             </View>
 
             {/* Confirm Password Input */}
-            <View className="space-y-2">
-              <Text className="text-text-secondary text-sm font-medium ml-1">
-                Confirm Password
-              </Text>
+            <View className="space-y-2 mt-5">
               <View className="relative">
                 <View className="absolute left-4 top-4 z-10">
                   <Ionicons name="lock-closed-outline" size={20} color={COLORS.text.secondary} />
@@ -247,7 +239,7 @@ export default function Register() {
 
             {/* Register Button */}
             <TouchableOpacity
-              className={`w-full py-4 rounded-2xl mt-4 ${
+              className={`w-full py-4 rounded-2xl mt-6 ${
                 isLoading ? 'bg-primary/70' : 'bg-primary'
               }`}
               onPress={handleRegister}
