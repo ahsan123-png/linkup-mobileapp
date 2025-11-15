@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
   RefreshControl,
   Text,
   TextInput,
@@ -28,6 +30,8 @@ export default function ChatScreen() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
   
   const { user: currentUser } = useAuth();
   const { 
@@ -42,6 +46,7 @@ export default function ChatScreen() {
   // Load initial data
   useEffect(() => {
     loadInitialData();
+    loadProfileImage();
   }, []);
 
   // Handle search filter
@@ -57,6 +62,17 @@ export default function ChatScreen() {
 
   const loadInitialData = async () => {
     await Promise.all([fetchUsers(), fetchFriendRequests()]);
+  };
+
+  const loadProfileImage = async () => {
+    try {
+      const savedImage = await SecureStore.getItemAsync('userProfileImage');
+      if (savedImage) {
+        setProfileImage(savedImage);
+      }
+    } catch (error) {
+      console.error('Failed to load profile image:', error);
+    }
   };
 
   const fetchUsers = async () => {
@@ -224,6 +240,57 @@ export default function ChatScreen() {
     }
   };
 
+  const handleProfileImagePress = () => {
+    // Navigate to profile tab
+    router.push('/profile');
+    setShowMenu(false);
+  };
+
+  const handleCameraPress = async () => {
+    setShowMenu(false);
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Sorry, we need camera permissions to take photos.');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        setProfileImage(imageUri);
+        
+        // Save to secure store
+        await SecureStore.setItemAsync('userProfileImage', imageUri);
+        
+        Alert.alert('Success', 'Profile picture updated!');
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert('Error', 'Failed to take picture. Please try again.');
+    }
+  };
+
+  const handleNewGroup = () => {
+    setShowMenu(false);
+    Alert.alert('New Group', 'Create new group feature coming soon!');
+    // router.push('/new-group'); // Uncomment when you have new group screen
+  };
+
+  const handleSettings = () => {
+    setShowMenu(false);
+    Alert.alert('Settings', 'Settings feature coming soon!');
+    // router.push('/settings'); // Uncomment when you have settings screen
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
@@ -233,6 +300,13 @@ export default function ChatScreen() {
   const getAvatarSource = (user: User) => {
     if (user.avatar) {
       return { uri: user.avatar };
+    }
+    return require('../../assets/images/default-avatar.png');
+  };
+
+  const getProfileImageSource = () => {
+    if (profileImage) {
+      return { uri: profileImage };
     }
     return require('../../assets/images/default-avatar.png');
   };
@@ -338,50 +412,6 @@ export default function ChatScreen() {
     </TouchableOpacity>
   );
 
-  const renderFriendRequestItem = ({ item }: { item: User }) => (
-    <TouchableOpacity
-      className="flex-row items-center p-4 border-b border-border active:opacity-70 bg-blue-500/10"
-      onPress={() => {
-        // Show user profile or options
-        Alert.alert(
-          item.name,
-          `Send friend request to ${item.name}?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Send Request', 
-              onPress: () => handleFriendRequest(item),
-              style: 'default'
-            }
-          ]
-        );
-      }}
-    >
-      <View className="relative">
-        <View className="w-12 h-12 bg-surfaceLight rounded-full items-center justify-center overflow-hidden">
-          <Image 
-            source={getAvatarSource(item)}
-            className="w-12 h-12 rounded-full"
-            defaultSource={require('../../assets/images/default-avatar.png')}
-          />
-        </View>
-        <View className="absolute bottom-0 right-0 w-3 h-3 bg-gray-500 rounded-full border-2 border-background" />
-      </View>
-      
-      <View className="flex-1 ml-3">
-        <Text className="text-white font-semibold text-base">{item.name}</Text>
-        <Text className="text-text-secondary text-sm">{item.status}</Text>
-      </View>
-      
-      <TouchableOpacity
-        className="bg-primary px-4 py-2 rounded-lg"
-        onPress={() => handleFriendRequest(item)}
-      >
-        <Text className="text-white text-sm font-semibold">Add Friend</Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
-
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -395,21 +425,50 @@ export default function ChatScreen() {
 
   const displayData = isSearching ? searchResults : filteredUsers;
   const hasFriendRequests = pendingRequestsCount > 0;
-  const hasFriends = filteredUsers.length > 0;
   const hasSearchResults = searchResults.length > 0;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      {/* Header */}
-      <View className="px-4 pt-4">
-        <Text className="text-3xl font-bold text-white mb-4">Chats</Text>
-        
+      {/* Header - WhatsApp Style */}
+      <View className="bg-surface pt-12 pb-4 px-4">
+        <View className="flex-row items-center justify-between">
+          {/* Left: Profile Image */}
+          <TouchableOpacity 
+            onPress={handleProfileImagePress}
+            className="w-10 h-10 rounded-full overflow-hidden"
+          >
+            <Image 
+              source={getProfileImageSource()}
+              className="w-10 h-10 rounded-full"
+              defaultSource={require('../../assets/images/default-avatar.png')}
+            />
+          </TouchableOpacity>
+
+          {/* Center: App Name */}
+          <View className="flex-1 items-left ml-4">
+            <Text className="text-white text-xl font-bold">Link<Text className="text-primary">Up</Text></Text>
+          </View>
+
+          {/* Right: Icons */}
+          <View className="flex-row items-center space-x-6 gap-3">
+            {/* Camera Icon */}
+            <TouchableOpacity onPress={handleCameraPress}>
+              <Ionicons name="camera-outline" size={24} color="white" />
+            </TouchableOpacity>
+
+            {/* Three Dots Menu */}
+            <TouchableOpacity onPress={() => setShowMenu(true)}>
+              <Ionicons name="ellipsis-vertical" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Search Bar */}
-        <View className="flex-row items-center bg-surface rounded-xl px-4 py-3 mb-4">
+        <View className="flex-row items-center bg-background rounded-lg px-4 py-3 mt-4">
           <Ionicons name="search" size={20} color="#666666" />
           <TextInput
             className="flex-1 text-white ml-3 text-base"
-            placeholder="Search users by name or username..."
+            placeholder="Search users..."
             placeholderTextColor="#666666"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -425,9 +484,8 @@ export default function ChatScreen() {
         {/* Friend Requests Indicator */}
         {hasFriendRequests && (
           <TouchableOpacity 
-            className="bg-primary/20 border border-primary rounded-lg p-3 mb-4 flex-row items-center"
+            className="bg-primary/20 border border-primary rounded-lg p-3 mt-4 flex-row items-center"
             onPress={() => {
-              // Navigate to friend requests screen
               Alert.alert('Friend Requests', `${pendingRequestsCount} pending requests`);
             }}
           >
@@ -439,6 +497,46 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Three Dots Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity 
+          className="flex-1 bg-black/50"
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View className="absolute top-16 right-4 bg-surface rounded-lg shadow-lg min-w-48">
+            <TouchableOpacity 
+              className="flex-row items-center px-4 py-3 border-b border-border"
+              onPress={handleNewGroup}
+            >
+              <Ionicons name="people-outline" size={20} color="white" />
+              <Text className="text-white ml-3 text-base">New Group</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              className="flex-row items-center px-4 py-3 border-b border-border"
+              onPress={handleSettings}
+            >
+              <Ionicons name="settings-outline" size={20} color="white" />
+              <Text className="text-white ml-3 text-base">Settings</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              className="flex-row items-center px-4 py-3"
+              onPress={handleProfileImagePress}
+            >
+              <Ionicons name="person-outline" size={20} color="white" />
+              <Text className="text-white ml-3 text-base">Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Chat List */}
       <FlatList
@@ -483,7 +581,7 @@ export default function ChatScreen() {
             {!isSearching && (
               <TouchableOpacity 
                 className="bg-primary px-6 py-3 rounded-lg mt-6"
-                onPress={() => setSearchQuery('a')} // Trigger search
+                onPress={() => setSearchQuery('a')}
               >
                 <Text className="text-white font-semibold">Find Friends</Text>
               </TouchableOpacity>
