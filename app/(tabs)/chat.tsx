@@ -49,13 +49,16 @@ export default function ChatScreen() {
     loadProfileImage();
   }, []);
 
-  // Handle search filter
+  // Handle search filter - UPDATED TO MATCH REACT BEHAVIOR
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      setFilteredUsers(users);
+      // When no search query, only show friends (isFriend === "True")
+      const friends = users.filter(user => user.isFriend === "True");
+      setFilteredUsers(friends);
       setSearchResults([]);
       setIsSearching(false);
     } else {
+      // When searching, show all search results (both friends and non-friends)
       handleSearch(searchQuery);
     }
   }, [searchQuery, users]);
@@ -99,10 +102,12 @@ export default function ChatScreen() {
         }));
         
         setUsers(transformedUsers);
+        
+        // UPDATED: Only show friends by default (no search query)
         const friends = transformedUsers.filter(user => user.isFriend === "True");
         setFilteredUsers(friends);
         
-        // Fetch last messages for friends
+        // Fetch last messages for friends only
         fetchLastMessages(friends);
       } else {
         throw new Error('Failed to fetch users');
@@ -325,6 +330,7 @@ export default function ChatScreen() {
     <TouchableOpacity
       className="flex-row items-center p-4 border-b border-border active:opacity-70"
       onPress={() => {
+        // UPDATED: Only allow chat navigation for friends
         if (item.isFriend === "True") {
           router.push(`/chat/${item.id}`);
         }
@@ -352,14 +358,15 @@ export default function ChatScreen() {
         <Text className="text-text-secondary text-sm mt-1" numberOfLines={1}>
           {item.isFriend === "True" 
             ? formatLastMessage(lastMessages[item.id] || 'Start a conversation')
-            : item.status
+            : item.status || 'Available'
           }
         </Text>
       </View>
       
       {/* Action Buttons */}
       <View className="items-end">
-        {item.isFriend === "False" && (
+        {/* Show Add Friend button for non-friends (only in search results) */}
+        {isSearching && item.isFriend === "False" && (
           <TouchableOpacity
             className="bg-primary px-4 py-2 rounded-lg"
             onPress={() => handleFriendRequest(item)}
@@ -368,7 +375,8 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
         
-        {item.isFriend === "Pending" && (
+        {/* Show Pending button for pending requests (only in search results) */}
+        {isSearching && item.isFriend === "Pending" && (
           <TouchableOpacity
             className="bg-gray-500 px-4 py-2 rounded-lg"
             onPress={() => handleCancelRequest(item)}
@@ -377,6 +385,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
         )}
         
+        {/* Show chat icon for friends (always visible) */}
         {item.isFriend === "True" && (
           <View className="items-end">
             <Text className="text-text-secondary text-xs mb-1">
@@ -423,9 +432,11 @@ export default function ChatScreen() {
     );
   }
 
+  // UPDATED: Only show search results when searching, otherwise show friends
   const displayData = isSearching ? searchResults : filteredUsers;
   const hasFriendRequests = pendingRequestsCount > 0;
   const hasSearchResults = searchResults.length > 0;
+  const hasFriends = filteredUsers.length > 0;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -545,7 +556,7 @@ export default function ChatScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <>
-            {/* AI Assistant */}
+            {/* AI Assistant - Only show when not searching */}
             {!isSearching && renderAIItem()}
             
             {/* Search Results Header */}
@@ -578,10 +589,10 @@ export default function ChatScreen() {
               }
             </Text>
             
-            {!isSearching && (
+            {!isSearching && !hasFriends && (
               <TouchableOpacity 
                 className="bg-primary px-6 py-3 rounded-lg mt-6"
-                onPress={() => setSearchQuery('a')}
+                onPress={() => setSearchQuery('a')} // Trigger search to find users
               >
                 <Text className="text-white font-semibold">Find Friends</Text>
               </TouchableOpacity>

@@ -8,6 +8,7 @@ interface User {
   email: string;
   full_name: string;
   profile_image?: string;
+  status?: string;
 }
 
 interface Tokens {
@@ -29,10 +30,12 @@ interface RegisterResponse {
 
 interface AuthContextType {
   user: User | null;
+  userData: User | null; // Added to match React web structure
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
+  setUserData: (userData: User | null) => void; // Added this function
 }
 
 interface RegisterData {
@@ -58,6 +61,7 @@ const deleteItemAsync = async (key: string) => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<User | null>(null); // Added userData state
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -70,7 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await getItemAsync('user');
       
       if (accessToken && userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setUserData(parsedUser); // Initialize both user and userData
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
@@ -108,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setItemAsync('user', JSON.stringify(data.user));
 
       setUser(data.user);
+      setUserData(data.user); // Set both user and userData
       console.log('Login successful for user:', data.user.username);
       return true;
     } catch (error: any) {
@@ -140,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await setItemAsync('user', JSON.stringify(data.user));
 
       setUser(data.user);
+      setUserData(data.user); // Set both user and userData
       console.log('Registration successful for user:', data.user.username);
       return true;
     } catch (error: any) {
@@ -153,10 +161,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await deleteItemAsync('refreshToken');
     await deleteItemAsync('user');
     setUser(null);
+    setUserData(null); // Clear both user and userData
+  };
+
+  // Function to update user data (this is what we need for profile updates)
+  const updateUserData = (newUserData: User | null) => {
+    if (newUserData) {
+      setUserData(newUserData);
+      setUser(newUserData); // Also update the main user state for consistency
+      // Update SecureStore as well
+      setItemAsync('user', JSON.stringify(newUserData));
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      userData, // Added to context
+      isLoading, 
+      login, 
+      register, 
+      logout,
+      setUserData: updateUserData // Added setUserData function
+    }}>
       {children}
     </AuthContext.Provider>
   );

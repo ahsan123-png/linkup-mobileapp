@@ -18,14 +18,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../components/auth/AuthContext';
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, setUserData } = useAuth();
   const router = useRouter();
   
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(user?.full_name || user?.username || '');
-  const [status, setStatus] = useState('Available');
+  const [status, setStatus] = useState(user?.status || 'Available');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -46,13 +48,22 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadProfileImage();
-  }, []);
+    if (user?.status) {
+      setStatus(user.status);
+    }
+  }, [user]);
 
   const loadProfileImage = async () => {
     try {
       const savedImage = await SecureStore.getItemAsync('userProfileImage');
       if (savedImage) {
         setProfileImage(savedImage);
+      } else if (user?.profile_image) {
+        // Load from user data if available
+        const imageUrl = user.profile_image.includes('http') 
+          ? user.profile_image 
+          : `${BASE_URL}${user.profile_image}`;
+        setProfileImage(imageUrl);
       }
     } catch (error) {
       console.error('Failed to load profile image:', error);
@@ -76,9 +87,7 @@ export default function ProfileScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        setProfileImage(imageUri);
-        await SecureStore.setItemAsync('userProfileImage', imageUri);
-        Alert.alert('Success', 'Profile picture updated!');
+        await updateProfileImage(imageUri);
       }
     } catch (error) {
       console.error('Image pick error:', error);
@@ -103,9 +112,7 @@ export default function ProfileScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        setProfileImage(imageUri);
-        await SecureStore.setItemAsync('userProfileImage', imageUri);
-        Alert.alert('Success', 'Profile picture updated!');
+        await updateProfileImage(imageUri);
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -113,26 +120,233 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdateName = async () => {
-    // if (!editedName.trim()) {
-    //   Alert.alert('Error', 'Name cannot be empty.');
-    //   return;
-    // }
+  const updateProfileImage = async (imageUri: string) => {
+    setLoading(true);
+    try {
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      const userData = JSON.parse(await SecureStore.getItemAsync('user') || '{}');
+      const userId = userData?.user_id || userData?.id;
 
-    // setLoading(true);
-    // try {
-    //   // Here you would typically make an API call to update the user's name
-    //   // For now, we'll just update the local state
-    //   if (updateUser) {
-    //     await updateUser({ full_name: editedName });
-    //   }
-    //   setIsEditingName(false);
-    //   Alert.alert('Success', 'Name updated successfully!');
-    // } catch (error) {
-    //   Alert.alert('Error', 'Failed to update name.');
-    // } finally {
-    //   setLoading(false);
-    // }
+      if (!userId || !accessToken) {
+        Alert.alert('Error', 'Authentication error. Please log in again.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('profile_image', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'profile-image.jpg',
+      } as any);
+
+      const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        Alert.alert('Error', 'Failed to update profile picture.');
+        return;
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update local state and storage
+      const updatedWithImage = {
+        ...updatedUser,
+        profile_image: updatedUser.profile_image
+          ? `${BASE_URL}${updatedUser.profile_image}?t=${Date.now()}`
+          : null,
+      };
+
+      // Update auth context and local storage
+      setUserData(updatedWithImage);
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedWithImage));
+      setProfileImage(imageUri);
+      await SecureStore.setItemAsync('userProfileImage', imageUri);
+      
+      Alert.alert('Success', 'Profile picture updated!');
+    } catch (error) {
+      console.error('Error updating profile image:', error);
+      Alert.alert('Error', 'Failed to update profile picture.');
+    } finally {
+      setLoading(false);
+      setShowOptionsModal(false);
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!editedName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      const userData = JSON.parse(await SecureStore.getItemAsync('user') || '{}');
+      const userId = userData?.user_id || userData?.id;
+
+      if (!userId || !accessToken) {
+        Alert.alert('Error', 'Authentication error. Please log in again.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('full_name', editedName);
+
+      const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        Alert.alert('Error', 'Failed to update name.');
+        return;
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update local state and storage
+      const updatedUserData = {
+        ...updatedUser,
+        profile_image: updatedUser.profile_image
+          ? `${BASE_URL}${updatedUser.profile_image}`
+          : userData.profile_image,
+      };
+
+      setUserData(updatedUserData);
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUserData));
+      
+      setIsEditingName(false);
+      Alert.alert('Success', 'Name updated successfully!');
+    } catch (error) {
+      console.error('Error updating name:', error);
+      Alert.alert('Error', 'Failed to update name.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    setLoading(true);
+    try {
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      const userData = JSON.parse(await SecureStore.getItemAsync('user') || '{}');
+      const userId = userData?.user_id || userData?.id;
+
+      if (!userId || !accessToken) {
+        Alert.alert('Error', 'Authentication error. Please log in again.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('status', newStatus);
+
+      const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        Alert.alert('Error', 'Failed to update status.');
+        return;
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update local state and storage
+      const updatedUserData = {
+        ...updatedUser,
+        profile_image: updatedUser.profile_image
+          ? `${BASE_URL}${updatedUser.profile_image}`
+          : userData.profile_image,
+      };
+
+      setUserData(updatedUserData);
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUserData));
+      setStatus(newStatus);
+      
+      setShowStatusModal(false);
+      Alert.alert('Success', 'Status updated successfully!');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      Alert.alert('Error', 'Failed to update status.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveProfileImage = async () => {
+    setLoading(true);
+    try {
+      const accessToken = await SecureStore.getItemAsync('accessToken');
+      const userData = JSON.parse(await SecureStore.getItemAsync('user') || '{}');
+      const userId = userData?.user_id || userData?.id;
+
+      if (!userId || !accessToken) {
+        Alert.alert('Error', 'Authentication error. Please log in again.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('profile_image', ''); // Empty string to remove image
+
+      const response = await fetch(`${BASE_URL}/users/${userId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        Alert.alert('Error', 'Failed to remove profile picture.');
+        return;
+      }
+
+      const updatedUser = await response.json();
+      
+      // Update local state and storage
+      const updatedUserData = {
+        ...updatedUser,
+        profile_image: null,
+      };
+
+      setUserData(updatedUserData);
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUserData));
+      setProfileImage(null);
+      await SecureStore.deleteItemAsync('userProfileImage');
+      
+      setShowOptionsModal(false);
+      Alert.alert('Success', 'Profile picture removed!');
+    } catch (error) {
+      console.error('Error removing profile image:', error);
+      Alert.alert('Error', 'Failed to remove profile picture.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -157,6 +371,12 @@ export default function ProfileScreen() {
     if (profileImage) {
       return { uri: profileImage };
     }
+    if (user?.profile_image) {
+      const imageUrl = user.profile_image.includes('http') 
+        ? user.profile_image 
+        : `${BASE_URL}${user.profile_image}`;
+      return { uri: imageUrl };
+    }
     return require('../../assets/images/default-avatar.png');
   };
 
@@ -171,8 +391,13 @@ export default function ProfileScreen() {
         <TouchableOpacity 
           style={styles.cameraButton}
           onPress={() => setShowOptionsModal(true)}
+          disabled={loading}
         >
-          <Ionicons name="camera" size={20} color="white" />
+          {loading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Ionicons name="camera" size={20} color="white" />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -185,6 +410,8 @@ export default function ProfileScreen() {
               onChangeText={setEditedName}
               autoFocus
               maxLength={50}
+              placeholder="Enter your name"
+              placeholderTextColor="#888"
             />
             <TouchableOpacity 
               style={styles.saveButton}
@@ -203,6 +430,7 @@ export default function ProfileScreen() {
                 setIsEditingName(false);
                 setEditedName(user?.full_name || user?.username || '');
               }}
+              disabled={loading}
             >
               <Ionicons name="close" size={20} color="#FF3B30" />
             </TouchableOpacity>
@@ -215,6 +443,7 @@ export default function ProfileScreen() {
             <TouchableOpacity 
               style={styles.editButton}
               onPress={() => setIsEditingName(true)}
+              disabled={loading}
             >
               <Ionicons name="create-outline" size={18} color="#4CAF50" />
             </TouchableOpacity>
@@ -224,6 +453,7 @@ export default function ProfileScreen() {
         <TouchableOpacity 
           style={styles.statusContainer}
           onPress={() => setShowStatusModal(true)}
+          disabled={loading}
         >
           <Text style={styles.statusText}>{status}</Text>
           <Ionicons name="chevron-forward" size={16} color="#666" />
@@ -233,7 +463,7 @@ export default function ProfileScreen() {
   );
 
   const renderMenuItem = (icon: string, title: string, onPress: () => void, showArrow = true) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} disabled={loading}>
       <View style={styles.menuItemLeft}>
         <Ionicons name={icon as any} size={22} color="#4CAF50" />
         <Text style={styles.menuItemText}>{title}</Text>
@@ -279,7 +509,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={loading}>
           <Ionicons name="log-out-outline" size={22} color="#FF3B30" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -296,7 +526,7 @@ export default function ProfileScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Set Status</Text>
-              <TouchableOpacity onPress={() => setShowStatusModal(false)}>
+              <TouchableOpacity onPress={() => setShowStatusModal(false)} disabled={loading}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
@@ -305,10 +535,8 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   key={index}
                   style={styles.statusOption}
-                  onPress={() => {
-                    setStatus(option);
-                    setShowStatusModal(false);
-                  }}
+                  onPress={() => handleUpdateStatus(option)}
+                  disabled={loading}
                 >
                   <Text style={styles.statusOptionText}>{option}</Text>
                   {status === option && (
@@ -338,6 +566,7 @@ export default function ProfileScreen() {
                 setShowOptionsModal(false);
                 handleCameraPress();
               }}
+              disabled={loading}
             >
               <Ionicons name="camera" size={24} color="#4CAF50" />
               <Text style={styles.imageOptionText}>Take Photo</Text>
@@ -349,20 +578,17 @@ export default function ProfileScreen() {
                 setShowOptionsModal(false);
                 handleImagePick();
               }}
+              disabled={loading}
             >
               <Ionicons name="image" size={24} color="#4CAF50" />
               <Text style={styles.imageOptionText}>Choose from Gallery</Text>
             </TouchableOpacity>
             
-            {profileImage && (
+            {(profileImage || user?.profile_image) && (
               <TouchableOpacity 
                 style={[styles.imageOption, styles.removeOption]}
-                onPress={() => {
-                  setProfileImage(null);
-                  SecureStore.deleteItemAsync('userProfileImage');
-                  setShowOptionsModal(false);
-                  Alert.alert('Success', 'Profile picture removed!');
-                }}
+                onPress={handleRemoveProfileImage}
+                disabled={loading}
               >
                 <Ionicons name="trash-outline" size={24} color="#FF3B30" />
                 <Text style={[styles.imageOptionText, styles.removeText]}>Remove Photo</Text>
@@ -372,6 +598,7 @@ export default function ProfileScreen() {
             <TouchableOpacity 
               style={styles.cancelOption}
               onPress={() => setShowOptionsModal(false)}
+              disabled={loading}
             >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
